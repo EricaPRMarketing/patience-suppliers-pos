@@ -13,7 +13,7 @@ export default defineConfig({
         name: 'Patience Suppliers POS',
         short_name: 'Patience POS',
         description: 'Sales, quotations, invoices and stock for Patience Suppliers (Z) Ltd',
-        theme_color: '#0a9443',
+        theme_color: '#009541',
         background_color: '#ffffff',
         display: 'standalone',
         start_url: '/',
