@@ -8,6 +8,9 @@ const PATHS: Record<string, string> = {
   users: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM1 20c0-3.3 3.6-6 8-6s8 2.7 8 6v1H1zm17.5-5.8c2.6.5 4.5 2.4 4.5 4.8v1h-4v-1c0-1.8-.2-3.4-.5-4.8z',
   activity: 'M3 12h4l3-8 4 16 3-8h4v2h-2.6L14 22 10 6l-1.6 6H3z',
   account: 'M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm-9 10c0-4.4 4-8 9-8s9 3.6 9 8z',
+  upload: 'M11 16V7.8L8.4 10.4 7 9l5-5 5 5-1.4 1.4L13 7.8V16zm-7 2h16v2H4z',
+  plus: 'M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z',
+  alert: 'M12 2 1 21h22zm-1 7h2v6h-2zm0 8h2v2h-2z',
   signout: 'M10 3H4v18h6v-2H6V5h4zm6.6 4.4L15.2 8.8 17.4 11H9v2h8.4l-2.2 2.2 1.4 1.4L21.2 12z',
 };
 

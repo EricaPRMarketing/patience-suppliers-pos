@@ -11,6 +11,7 @@ import { UsersPage } from './pages/UsersPage';
 import { ActivityPage } from './pages/ActivityPage';
 import { AccountPage } from './pages/AccountPage';
 import { ComingSoonPage } from './pages/ComingSoonPage';
+import { InventoryPage } from './pages/inventory/InventoryPage';
 
 function Guard({ needs, children }: { needs?: Permission; children: ReactNode }) {
   const { user } = useAuth();
@@ -44,7 +45,7 @@ function AppRoutes() {
         <Route path="sales" element={<Guard needs="sales.create"><ComingSoonPage title="Sales" step="step 3" icon="sales" features={["Quick till screen to sell from stock", "Works offline and syncs later", "Prints or shares a receipt"]} /></Guard>} />
         <Route path="quotations" element={<Guard needs="quotes.create"><ComingSoonPage title="Quotations" step="step 3" icon="quotations" features={["Build a quote from inventory items", "PDF on the Patience Suppliers letterhead", "Turn a quote into an invoice in one click"]} /></Guard>} />
         <Route path="invoices" element={<Guard needs="invoices.create"><ComingSoonPage title="Invoices" step="step 3" icon="invoices" features={["Kwacha invoices, no VAT", "Stock goes down when an invoice is issued", "Shows paid, part paid or unpaid"]} /></Guard>} />
-        <Route path="inventory" element={<Guard needs="inventory.view"><ComingSoonPage title="Inventory" step="step 2" icon="inventory" features={["Upload stock from Excel or CSV", "Search, edit prices and quantities", "Low-stock warnings"]} /></Guard>} />
+        <Route path="inventory" element={<Guard needs="inventory.view"><InventoryPage /></Guard>} />
         <Route path="payments" element={<Guard needs="payments.confirm"><ComingSoonPage title="Payments" step="step 4" icon="payments" features={["Mobile money or bank with proof of payment upload", "Manager or owner confirms each payment", "Online payment gateway"]} /></Guard>} />
         <Route path="users" element={<Guard needs="users.view"><UsersPage /></Guard>} />
         <Route path="activity" element={<ActivityPage />} />

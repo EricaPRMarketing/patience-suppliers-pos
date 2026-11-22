@@ -30,6 +30,34 @@ export interface ActivityEntry extends SyncFields {
   details: string;
 }
 
+export interface Product extends SyncFields {
+  /** Item code / SKU. Unique when present. */
+  code: string;
+  name: string;
+  category: string;
+  /** e.g. each, bag, litre, metre, box */
+  unit: string;
+  /** Selling price in ngwee (K 1.00 = 100) to avoid rounding errors. No VAT. */
+  priceNgwee: number;
+  /** Optional buying price in ngwee, visible to managers and owner only. */
+  costNgwee: number | null;
+  quantity: number;
+  /** Warn when quantity is at or below this. */
+  reorderLevel: number;
+  active: boolean;
+}
+
+export interface StockMovement extends SyncFields {
+  at: string;
+  productId: string;
+  /** Positive adds stock, negative removes it. */
+  change: number;
+  quantityAfter: number;
+  reason: string;
+  userId: string;
+  username: string;
+}
+
 export interface Setting {
   key: string;
   value: string;
@@ -39,6 +67,8 @@ export class PosDatabase extends Dexie {
   users!: EntityTable<User, 'id'>;
   activity!: EntityTable<ActivityEntry, 'id'>;
   settings!: EntityTable<Setting, 'key'>;
+  products!: EntityTable<Product, 'id'>;
+  stockMovements!: EntityTable<StockMovement, 'id'>;
 
   constructor(name = 'patience-pos') {
     super(name);
@@ -46,6 +76,10 @@ export class PosDatabase extends Dexie {
       users: 'id, &username, role, active, syncState',
       activity: 'id, at, userId, role, action, syncState',
       settings: 'key',
+    });
+    this.version(2).stores({
+      products: 'id, code, name, category, active, syncState',
+      stockMovements: 'id, at, productId, userId, syncState',
     });
   }
 }

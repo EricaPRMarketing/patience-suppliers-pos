@@ -6,13 +6,23 @@ export type Permission =
   | 'invoices.create'
   | 'inventory.view'
   | 'inventory.edit'
+  | 'inventory.import'
+  | 'inventory.viewCost'
   | 'prices.edit'
   | 'payments.confirm'
   | 'users.view'
   | 'settings.edit';
 
 const STAFF: Permission[] = ['sales.create', 'quotes.create', 'invoices.create', 'inventory.view'];
-const MANAGER: Permission[] = [...STAFF, 'inventory.edit', 'prices.edit', 'payments.confirm', 'users.view'];
+const MANAGER: Permission[] = [
+  ...STAFF,
+  'inventory.edit',
+  'inventory.import',
+  'inventory.viewCost',
+  'prices.edit',
+  'payments.confirm',
+  'users.view',
+];
 const OWNER: Permission[] = [...MANAGER, 'settings.edit'];
 
 const BY_ROLE: Record<Role, ReadonlySet<Permission>> = {
