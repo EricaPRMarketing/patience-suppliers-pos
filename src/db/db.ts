@@ -19,6 +19,10 @@ export interface User extends SyncFields {
   passwordSalt: string;
   active: boolean;
   createdBy: string | null;
+  /** Consecutive wrong passwords since the last successful sign-in. */
+  failedAttempts?: number;
+  /** ISO time until which sign-in is blocked after too many wrong passwords. */
+  lockedUntil?: string | null;
 }
 
 export interface ActivityEntry extends SyncFields {
@@ -28,6 +32,12 @@ export interface ActivityEntry extends SyncFields {
   role: Role;
   action: string;
   details: string;
+  /** Structured facts used by the unusual-activity checks. */
+  meta?: Record<string, string | number>;
+  /** Position in the tamper-evident chain, starting at 1. */
+  seq?: number;
+  prevHash?: string;
+  hash?: string;
 }
 
 export interface Product extends SyncFields {
@@ -80,6 +90,9 @@ export class PosDatabase extends Dexie {
     this.version(2).stores({
       products: 'id, code, name, category, active, syncState',
       stockMovements: 'id, at, productId, userId, syncState',
+    });
+    this.version(3).stores({
+      activity: 'id, at, userId, role, action, syncState, seq',
     });
   }
 }

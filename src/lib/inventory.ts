@@ -65,7 +65,7 @@ async function recordMovement(actor: User, product: Product, change: number, rea
 export async function createProduct(actor: User, input: ProductInput): Promise<Product> {
   requireEdit(actor);
   const data = clean(input);
-  return db.transaction('rw', db.products, db.stockMovements, db.activity, async () => {
+  return db.transaction('rw', db.products, db.stockMovements, db.activity, db.settings, async () => {
     if (await codeTaken(data.code)) throw new InventoryError(`Item code "${data.code}" is already used.`);
     const product: Product = { ...newRecord(), ...data, active: true };
     await db.products.add(product);
@@ -82,7 +82,7 @@ export async function updateProduct(
   input: Omit<ProductInput, 'quantity'>,
 ): Promise<Product> {
   requireEdit(actor);
-  return db.transaction('rw', db.products, db.activity, async () => {
+  return db.transaction('rw', db.products, db.activity, db.settings, async () => {
     const existing = await db.products.get(id);
     if (!existing) throw new InventoryError('Item not found.');
     const data = clean({ ...input, quantity: existing.quantity });
@@ -96,6 +96,7 @@ export async function updateProduct(
         actor,
         'Price changed',
         `${updated.name}: ${formatNgwee(existing.priceNgwee)} to ${formatNgwee(updated.priceNgwee)}`,
+        { productId: id, oldNgwee: existing.priceNgwee, newNgwee: updated.priceNgwee },
       );
     else await logActivity(actor, 'Item edited', updated.name);
     return updated;
@@ -106,7 +107,7 @@ export async function adjustStock(actor: User, id: string, change: number, reaso
   requireEdit(actor);
   if (!Number.isFinite(change) || change === 0) throw new InventoryError('Enter how many to add or remove.');
   if (!reason.trim()) throw new InventoryError('Give a reason for the stock change.');
-  return db.transaction('rw', db.products, db.stockMovements, db.activity, async () => {
+  return db.transaction('rw', db.products, db.stockMovements, db.activity, db.settings, async () => {
     const existing = await db.products.get(id);
     if (!existing) throw new InventoryError('Item not found.');
     const quantity = existing.quantity + change;
@@ -118,6 +119,13 @@ export async function adjustStock(actor: User, id: string, change: number, reaso
       actor,
       change > 0 ? 'Stock added' : 'Stock removed',
       `${updated.name}: ${change > 0 ? '+' : ''}${change} (${reason.trim()}), now ${quantity}`,
+      {
+        productId: id,
+        change,
+        before: existing.quantity,
+        valueNgwee: Math.abs(change) * existing.priceNgwee,
+        reason: reason.trim(),
+      },
     );
     return updated;
   });
@@ -163,12 +171,14 @@ export async function importProducts(
 ): Promise<ImportSummary> {
   if (!can(actor.role, 'inventory.import')) throw new InventoryError('Only managers and the owner can upload stock.');
   const cleaned = items.map(clean);
-  return db.transaction('rw', db.products, db.stockMovements, db.activity, async () => {
+  return db.transaction('rw', db.products, db.stockMovements, db.activity, db.settings, async () => {
     const all = await db.products.toArray();
     const byCode = new Map(all.filter((p) => p.code).map((p) => [p.code.toLowerCase(), p]));
     const byName = new Map(all.map((p) => [p.name.toLowerCase(), p]));
     let created = 0;
     let updated = 0;
+    let removedUnits = 0;
+    let removedValueNgwee = 0;
     const now = new Date().toISOString();
     for (const item of cleaned) {
       const match = item.code ? byCode.get(item.code.toLowerCase()) : byName.get(item.name.toLowerCase());
@@ -178,6 +188,10 @@ export async function importProducts(
         const next: Product = { ...match, ...provided, active: true, updatedAt: now, syncState: 'pending' };
         await db.products.put(next);
         await recordMovement(actor, next, next.quantity - match.quantity, `Stock upload: ${fileName}`);
+        if (next.quantity < match.quantity) {
+          removedUnits += match.quantity - next.quantity;
+          removedValueNgwee += (match.quantity - next.quantity) * match.priceNgwee;
+        }
         byName.set(next.name.toLowerCase(), next);
         if (next.code) byCode.set(next.code.toLowerCase(), next);
         updated++;
@@ -190,7 +204,13 @@ export async function importProducts(
         created++;
       }
     }
-    await logActivity(actor, 'Stock uploaded', `${fileName}: ${created} new, ${updated} updated`);
+    await logActivity(
+      actor,
+      'Stock uploaded',
+      `${fileName}: ${created} new, ${updated} updated` +
+        (removedUnits ? `, ${removedUnits} units removed (${formatNgwee(removedValueNgwee)})` : ''),
+      { created, updated, removedUnits, removedValueNgwee },
+    );
     return { created, updated };
   });
 }

@@ -2,8 +2,8 @@ import { useState, type FormEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Role, type User } from '../db/db';
 import { useCurrentUser } from '../auth/AuthContext';
-import { canManageRole, ROLE_LABEL } from '../auth/permissions';
-import { createUser, resetPassword, setUserActive, UserError } from '../lib/users';
+import { canManageRole, ROLE_LABEL, ROLE_MATRIX } from '../auth/permissions';
+import { createUser, resetPassword, setUserActive, unlockUser, UserError } from '../lib/users';
 
 export function UsersPage() {
   const actor = useCurrentUser();
@@ -37,6 +37,37 @@ export function UsersPage() {
           </table>
         </div>
       </section>
+      <section className="card">
+        <h2>What each role can do</h2>
+        <div className="table-wrap">
+          <table className="matrix">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Staff</th>
+                <th>Manager</th>
+                <th>Owner</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ROLE_MATRIX.map((r) => (
+                <tr key={r.label}>
+                  <td>{r.label}</td>
+                  {[r.staff, r.manager, r.owner].map((v, i) => (
+                    <td key={i} className={v ? 'yes' : 'no'}>
+                      {v ? '✓' : '–'}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="muted small">
+          Accounts lock for 15 minutes after 5 wrong passwords, and everyone is signed out after 15 minutes without
+          activity.
+        </p>
+      </section>
     </>
   );
 }
@@ -51,8 +82,17 @@ function UserRow({ actor, user, onMessage }: { actor: User; user: User; onMessag
       onMessage(e instanceof UserError ? e.message : 'Could not update the account.');
     }
   }
+  const locked = !!user.lockedUntil && new Date(user.lockedUntil) > new Date();
+  async function unlock() {
+    try {
+      await unlockUser(actor, user.id);
+      onMessage(`${user.fullName} can sign in again.`);
+    } catch (e) {
+      onMessage(e instanceof UserError ? e.message : 'Could not unlock the account.');
+    }
+  }
   async function reset() {
-    const pw = window.prompt(`New password for ${user.fullName} (at least 6 characters):`);
+    const pw = window.prompt(`New password for ${user.fullName} (at least 8 characters, letters and numbers):`);
     if (!pw) return;
     try {
       await resetPassword(actor, user.id, pw);
@@ -68,10 +108,15 @@ function UserRow({ actor, user, onMessage }: { actor: User; user: User; onMessag
       <td>
         <span className={`role role-${user.role}`}>{ROLE_LABEL[user.role]}</span>
       </td>
-      <td>{user.active ? 'Active' : 'Deactivated'}</td>
+      <td>{!user.active ? 'Deactivated' : locked ? <span className="qty out">Locked</span> : 'Active'}</td>
       <td className="actions">
         {manageable && (
           <>
+            {locked && (
+              <button className="ghost" onClick={unlock}>
+                Unlock
+              </button>
+            )}
             <button className="ghost" onClick={reset}>
               Reset password
             </button>

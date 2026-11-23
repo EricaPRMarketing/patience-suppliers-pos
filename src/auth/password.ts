@@ -37,7 +37,13 @@ export async function verifyPassword(password: string, hash: string, salt: strin
   return diff === 0;
 }
 
-export function passwordProblem(password: string): string | null {
-  if (password.length < 6) return 'Password must be at least 6 characters.';
+export const MIN_PASSWORD = 8;
+
+export function passwordProblem(password: string, username = ''): string | null {
+  if (password.length < MIN_PASSWORD) return `Password must be at least ${MIN_PASSWORD} characters.`;
+  if (!/[a-z]/i.test(password) || !/[0-9]/.test(password)) return 'Password must contain both letters and numbers.';
+  if (username && password.toLowerCase().includes(username.toLowerCase()))
+    return 'Password must not contain the username.';
+  if (/^(password|patience|12345678|qwerty)/i.test(password)) return 'That password is too easy to guess.';
   return null;
 }

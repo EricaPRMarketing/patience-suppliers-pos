@@ -17,9 +17,14 @@ export function LoginPage() {
     e.preventDefault();
     setBusy(true);
     setError('');
-    const ok = await login(username, password);
+    const r = await login(username, password);
     setBusy(false);
-    if (ok) navigate('/');
+    if (r.ok) return navigate('/');
+    setPassword('');
+    if (r.reason === 'locked')
+      setError(
+        `Too many wrong passwords. This account is locked until ${new Date(r.until).toLocaleTimeString('en-ZM', { hour: '2-digit', minute: '2-digit' })}. The owner or a manager can unlock it sooner.`,
+      );
     else setError('Wrong username or password, or the account has been deactivated.');
   }
 

@@ -11,7 +11,8 @@ export type Permission =
   | 'prices.edit'
   | 'payments.confirm'
   | 'users.view'
-  | 'settings.edit';
+  | 'settings.edit'
+  | 'security.view';
 
 const STAFF: Permission[] = ['sales.create', 'quotes.create', 'invoices.create', 'inventory.view'];
 const MANAGER: Permission[] = [
@@ -23,7 +24,22 @@ const MANAGER: Permission[] = [
   'payments.confirm',
   'users.view',
 ];
-const OWNER: Permission[] = [...MANAGER, 'settings.edit'];
+const OWNER: Permission[] = [...MANAGER, 'settings.edit', 'security.view'];
+
+/** Plain-language summary shown on the Users page. */
+export const ROLE_MATRIX: { label: string; staff: boolean; manager: boolean; owner: boolean }[] = [
+  { label: 'Make sales, quotations and invoices', staff: true, manager: true, owner: true },
+  { label: 'View stock and selling prices', staff: true, manager: true, owner: true },
+  { label: 'See buying prices', staff: false, manager: true, owner: true },
+  { label: 'Add items, change prices and adjust stock', staff: false, manager: true, owner: true },
+  { label: 'Upload the stock list', staff: false, manager: true, owner: true },
+  { label: 'Confirm payments', staff: false, manager: true, owner: true },
+  { label: 'Add, lock out and reset staff accounts', staff: false, manager: true, owner: true },
+  { label: 'Add and manage managers', staff: false, manager: false, owner: true },
+  { label: "See other people's activity", staff: false, manager: true, owner: true },
+  { label: "See managers' and the owner's activity", staff: false, manager: false, owner: true },
+  { label: 'Security alerts and log tamper check', staff: false, manager: false, owner: true },
+];
 
 const BY_ROLE: Record<Role, ReadonlySet<Permission>> = {
   staff: new Set(STAFF),

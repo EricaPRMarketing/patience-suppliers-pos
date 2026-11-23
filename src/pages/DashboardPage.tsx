@@ -5,6 +5,7 @@ import { useCurrentUser } from '../auth/AuthContext';
 import { canSeeActivityOf, ROLE_LABEL } from '../auth/permissions';
 import { formatDateTime } from '../lib/format';
 import { isLowStock } from '../lib/inventory';
+import { useAlerts } from './SecurityPage';
 
 export function DashboardPage() {
   const user = useCurrentUser();
@@ -15,6 +16,8 @@ export function DashboardPage() {
         .slice(0, 8),
     [user.id],
   );
+  const { alerts, reviewed } = useAlerts();
+  const openAlerts = user.role === 'owner' ? (alerts ?? []).filter((a) => !reviewed.has(a.id)) : [];
   const lowStock = useLiveQuery(async () => (await db.products.filter((p) => p.active).toArray()).filter(isLowStock));
   const counts = useLiveQuery(async () => {
     const users = await db.users.toArray();
@@ -44,6 +47,22 @@ export function DashboardPage() {
             <strong>{counts.pendingSync}</strong>
           </div>
         </div>
+      )}
+      {openAlerts.length > 0 && (
+        <section className="card alert-card danger-card">
+          <div className="row-between">
+            <h2>Security alerts ({openAlerts.length})</h2>
+            <Link to="/security">Review</Link>
+          </div>
+          <ul className="low-list">
+            {openAlerts.slice(0, 4).map((a) => (
+              <li key={a.id}>
+                <span>{a.title}</span>
+                <span className={a.severity === 'high' ? 'qty out' : 'qty low'}>{a.severity === 'high' ? 'High' : 'Check'}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
       {lowStock && lowStock.length > 0 && (
         <section className="card alert-card">

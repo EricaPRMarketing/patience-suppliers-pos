@@ -10,6 +10,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { UsersPage } from './pages/UsersPage';
 import { ActivityPage } from './pages/ActivityPage';
 import { AccountPage } from './pages/AccountPage';
+import { SecurityPage } from './pages/SecurityPage';
 import { ComingSoonPage } from './pages/ComingSoonPage';
 import { InventoryPage } from './pages/inventory/InventoryPage';
 
@@ -49,6 +50,7 @@ function AppRoutes() {
         <Route path="payments" element={<Guard needs="payments.confirm"><ComingSoonPage title="Payments" step="step 4" icon="payments" features={["Mobile money or bank with proof of payment upload", "Manager or owner confirms each payment", "Online payment gateway"]} /></Guard>} />
         <Route path="users" element={<Guard needs="users.view"><UsersPage /></Guard>} />
         <Route path="activity" element={<ActivityPage />} />
+        <Route path="security" element={<Guard needs="security.view"><SecurityPage /></Guard>} />
         <Route path="account" element={<AccountPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
