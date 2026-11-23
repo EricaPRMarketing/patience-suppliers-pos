@@ -128,7 +128,7 @@ export function InventoryPage() {
         <>
           <div className="filters">
             <input
-              placeholder="Search, e.g. ce for cement"
+              placeholder="Search items, e.g. ce"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               aria-label="Search"

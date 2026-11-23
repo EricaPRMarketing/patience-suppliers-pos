@@ -149,7 +149,7 @@ export function DocEditor({
         <h2>Items</h2>
         <div className="picker">
           <input
-            placeholder="Start typing an item name or code, e.g. ce for cement"
+            placeholder="Type an item, e.g. ce for cement"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
