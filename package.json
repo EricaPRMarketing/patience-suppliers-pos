@@ -9,7 +9,8 @@
     "build:preview": "VITE_ROUTER=memory vite build && python3 scripts/inline_preview.py",
     "preview": "vite preview",
     "test": "vitest run",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "build:demo": "tsc -b && VITE_DEMO=true vite build --outDir dist-demo && cd dist-demo && rm -f ../patience-pos-demo.zip && zip -qr ../patience-pos-demo.zip ."
   },
   "dependencies": {
     "dexie": "4.0.11",

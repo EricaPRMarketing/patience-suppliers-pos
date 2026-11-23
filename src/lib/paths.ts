@@ -15,3 +15,5 @@ export function asset(path: string): string {
 export function pageUrl(path: string): string {
   return path;
 }
+/** Demo build for showing the client: sample data and one-tap logins, but a normal installable web app. */
+export const IS_DEMO = IS_PREVIEW || import.meta.env.VITE_DEMO === 'true';
