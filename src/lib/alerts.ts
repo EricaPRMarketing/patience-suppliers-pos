@@ -1,5 +1,6 @@
 import { db, type ActivityEntry } from '../db/db';
 import { verifyActivityLog } from './activity';
+import { missingDocNumbers } from './docs';
 import { formatNgwee } from './format';
 
 export type Severity = 'high' | 'medium';
@@ -21,6 +22,7 @@ export const RULES = {
   writeOffsPerDay: 3, // removals by one person in one day
   priceDropShare: 0.2, // a price cut of 20% or more
   priceRestoreHours: 48, // a price lowered and put back within this time
+  discountShare: 0.1, // discounts of 10% or more on a quotation or invoice
   openHour: 7,
   closeHour: 19,
 };
@@ -92,6 +94,35 @@ export function activityAlerts(entries: ActivityEntry[]): Alert[] {
             username: e.username,
           });
         break;
+      case 'Invoice voided':
+        alerts.push({
+          id: `void:${e.id}`,
+          severity: num(e, 'paidNgwee') > 0 ? 'high' : 'medium',
+          at: e.at,
+          title: `Invoice voided by ${e.username}`,
+          details:
+            e.details +
+            (num(e, 'paidNgwee') > 0 ? `. ${formatNgwee(num(e, 'paidNgwee'))} had already been paid on it: check where the money went.` : ''),
+          username: e.username,
+        });
+        break;
+      case 'Quotation created':
+      case 'Quotation edited':
+      case 'Invoice issued':
+      case 'Cash sale': {
+        const gross = num(e, 'grossNgwee');
+        const disc = num(e, 'discountNgwee');
+        if (gross > 0 && disc / gross >= RULES.discountShare)
+          alerts.push({
+            id: `discount:${e.id}`,
+            severity: 'medium',
+            at: e.at,
+            title: `${Math.round((disc / gross) * 100)}% discount given by ${e.username}`,
+            details: `${e.details}. Discount ${formatNgwee(disc)} on ${formatNgwee(gross)}.`,
+            username: e.username,
+          });
+        break;
+      }
       case 'Price changed': {
         const oldP = num(e, 'oldNgwee');
         const newP = num(e, 'newNgwee');
@@ -162,6 +193,15 @@ export async function computeAlerts(): Promise<Alert[]> {
       at: p.at ?? new Date().toISOString(),
       title: 'The activity log has been tampered with',
       details: `${p.problem}. Someone may be trying to cover their tracks.`,
+    });
+
+  for (const n of await missingDocNumbers())
+    alerts.push({
+      id: `missingdoc:${n}`,
+      severity: 'high',
+      at: new Date().toISOString(),
+      title: `Document ${n} is missing`,
+      details: 'Numbers are never reused, so this quotation or invoice was deleted outside the app.',
     });
 
   // A quantity that does not match the item's own stock history was changed outside the app.

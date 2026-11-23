@@ -10,8 +10,14 @@ import { Icon } from '../components/Icon';
 export function useAlerts() {
   // Re-run the checks whenever the log, stock or settings change.
   const stamp = useLiveQuery(async () => {
-    const [a, m, p, s] = await Promise.all([db.activity.count(), db.stockMovements.count(), db.products.toArray(), db.settings.toArray()]);
-    return `${a}|${m}|${p.map((x) => x.updatedAt + x.quantity).join()}|${s.map((x) => x.value).join()}`;
+    const [a, m, p, s, d] = await Promise.all([
+      db.activity.count(),
+      db.stockMovements.count(),
+      db.products.toArray(),
+      db.settings.toArray(),
+      db.docs.count(),
+    ]);
+    return `${a}|${m}|${d}|${p.map((x) => x.updatedAt + x.quantity).join()}|${s.map((x) => x.value).join()}`;
   });
   const [alerts, setAlerts] = useState<Alert[] | null>(null);
   const [reviewed, setReviewed] = useState<Set<string>>(new Set());
@@ -114,6 +120,9 @@ export function SecurityPage() {
           </li>
           <li>{RULES.writeOffsPerDay} or more stock removals by one person in a day</li>
           <li>Stock uploads that lower quantities</li>
+          <li>Voided invoices, especially ones that had already been paid</li>
+          <li>Discounts of {RULES.discountShare * 100}% or more on a quotation, invoice or sale</li>
+          <li>Missing quotation or invoice numbers (deleted documents)</li>
           <li>Price cuts of {RULES.priceDropShare * 100}% or more, and prices lowered then put back within {RULES.priceRestoreHours} hours</li>
           <li>
             Staff or manager activity before {RULES.openHour}:00, after {RULES.closeHour}:00 or on Sundays

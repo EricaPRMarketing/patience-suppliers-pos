@@ -20,6 +20,15 @@ Point-of-sale web app for Patience Suppliers (Z) Ltd, Siavonga. Prices are in Kw
 - Every quantity change is recorded as a stock movement with who, when and why. Price changes are written to the activity log with old and new price.
 - "Load sample items" adds 20 made-up items for testing.
 
+## Quotations, invoices and sales (step 3)
+
+- Quotations (Q-YYYY-0001) and invoices (INV-YYYY-0001) numbered in sequence; numbers are never reused, so a missing number is flagged to the owner.
+- Prices always come from inventory. Only managers and the owner can give line or whole-document discounts; discounts of 10%+ raise an owner alert.
+- A quotation can be edited while draft or sent, marked sent or accepted, cancelled, or turned into an invoice in one click.
+- Issuing an invoice takes the stock out and refuses to sell more than is in stock. Voiding (managers and owner, with a reason) puts the stock back and alerts the owner.
+- Cash payments can be recorded against an invoice (paid, part paid, unpaid). The Sales page is a quick till for cash sales.
+- Every document prints on the Patience Suppliers letterhead on A4; "Save as PDF" in the print window makes the PDF.
+
 ## Security
 
 - Passwords: at least 8 characters with letters and numbers, hashed with PBKDF2 (210,000 rounds). Accounts lock for 15 minutes after 5 wrong passwords; the owner or a manager can unlock them sooner. Everyone is signed out after 15 minutes without activity.
@@ -34,7 +43,7 @@ Every record carries `id`, `createdAt`, `updatedAt` and `syncState` so it can be
 
 1. Foundation, logins and offline mode (done)
 2. Inventory section with Excel/CSV upload (done)
-3. Quotations and invoices on the company letterhead
+3. Quotations and invoices on the company letterhead (done)
 4. Payments (manual mobile money/bank with proof of payment, then a payment gateway), cloud sync and hosting
 
 ## Development

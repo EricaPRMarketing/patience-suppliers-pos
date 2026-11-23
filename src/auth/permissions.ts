@@ -12,7 +12,9 @@ export type Permission =
   | 'payments.confirm'
   | 'users.view'
   | 'settings.edit'
-  | 'security.view';
+  | 'security.view'
+  | 'docs.discount'
+  | 'docs.void';
 
 const STAFF: Permission[] = ['sales.create', 'quotes.create', 'invoices.create', 'inventory.view'];
 const MANAGER: Permission[] = [
@@ -20,6 +22,8 @@ const MANAGER: Permission[] = [
   'inventory.edit',
   'inventory.import',
   'inventory.viewCost',
+  'docs.discount',
+  'docs.void',
   'prices.edit',
   'payments.confirm',
   'users.view',
@@ -33,6 +37,8 @@ export const ROLE_MATRIX: { label: string; staff: boolean; manager: boolean; own
   { label: 'See buying prices', staff: false, manager: true, owner: true },
   { label: 'Add items, change prices and adjust stock', staff: false, manager: true, owner: true },
   { label: 'Upload the stock list', staff: false, manager: true, owner: true },
+  { label: 'Give discounts on quotations and invoices', staff: false, manager: true, owner: true },
+  { label: 'Void (cancel) an issued invoice', staff: false, manager: true, owner: true },
   { label: 'Confirm payments', staff: false, manager: true, owner: true },
   { label: 'Add, lock out and reset staff accounts', staff: false, manager: true, owner: true },
   { label: 'Add and manage managers', staff: false, manager: false, owner: true },
