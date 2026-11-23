@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { createOwner, UserError } from '../lib/users';
 import { useAuth } from '../auth/AuthContext';
 import { Letterhead } from '../components/Letterhead';
-import { IS_PREVIEW } from '../lib/paths';
+import { IS_DEMO } from '../lib/paths';
 import { seedDemo } from '../lib/demo';
 
 export function SetupPage({ onDone }: { onDone: () => void }) {
@@ -37,7 +37,7 @@ export function SetupPage({ onDone }: { onDone: () => void }) {
     <div className="auth-page">
       <form className="card auth-card" onSubmit={submit}>
         <Letterhead />
-        {IS_PREVIEW && (
+        {IS_DEMO && (
           <div className="demo-box">
             <strong>Preview link</strong>
             <p className="muted small">

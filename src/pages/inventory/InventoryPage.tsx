@@ -6,6 +6,8 @@ import { can } from '../../auth/permissions';
 import { importProducts, isLowStock, setProductActive } from '../../lib/inventory';
 import { SAMPLE_PRODUCTS } from '../../lib/sampleProducts';
 import { formatDateTime, formatNgwee } from '../../lib/format';
+import { searchItems } from '../../lib/search';
+import { useLocation } from 'react-router-dom';
 import { Icon } from '../../components/Icon';
 import { Modal } from '../../components/Modal';
 import { ProductForm } from './ProductForm';
@@ -27,7 +29,8 @@ export function InventoryPage() {
   const showCost = can(user.role, 'inventory.viewCost');
   const products = useLiveQuery(() => db.products.orderBy('name').toArray(), []);
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('');
+  const location = useLocation();
+  const [category, setCategory] = useState<string>((location.state as { category?: string } | null)?.category ?? '');
   const [lowOnly, setLowOnly] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [dialog, setDialog] = useState<Dialog>(null);
@@ -37,13 +40,12 @@ export function InventoryPage() {
   const active = products?.filter((p) => p.active) ?? [];
   const lowCount = active.filter(isLowStock).length;
   const stockValue = active.reduce((sum, p) => sum + p.priceNgwee * p.quantity, 0);
-  const q = search.trim().toLowerCase();
-  const shown = (products ?? []).filter(
-    (p) =>
-      (showArchived ? !p.active : p.active) &&
-      (!category || p.category === category) &&
-      (!lowOnly || isLowStock(p)) &&
-      (!q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q)),
+  const shown = searchItems(
+    (products ?? []).filter(
+      (p) =>
+        (showArchived ? !p.active : p.active) && (!category || p.category === category) && (!lowOnly || isLowStock(p)),
+    ),
+    search,
   );
 
   const close = (m?: string) => {
@@ -126,7 +128,7 @@ export function InventoryPage() {
         <>
           <div className="filters">
             <input
-              placeholder="Search by name or code"
+              placeholder="Search items, e.g. ce"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               aria-label="Search"

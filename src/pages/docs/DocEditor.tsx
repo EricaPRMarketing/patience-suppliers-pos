@@ -6,6 +6,9 @@ import { can } from '../../auth/permissions';
 import { formatNgwee } from '../../lib/format';
 import { parseKwacha } from '../../lib/money';
 import { lineTotal, type DocInput } from '../../lib/docs';
+import { highlight, searchItems } from '../../lib/search';
+
+const MAX_SHOWN = 50;
 
 interface Row {
   productId: string;
@@ -50,14 +53,14 @@ export function DocEditor({
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [dateLimit, setDateLimit] = useState(initial?.dateLimit ?? '');
   const [search, setSearch] = useState('');
+  const [active, setActive] = useState(0);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
   const byId = useMemo(() => new Map((products ?? []).map((p) => [p.id, p])), [products]);
   const q = search.trim().toLowerCase();
-  const matches = q
-    ? (products ?? []).filter((p) => p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q)).slice(0, 8)
-    : [];
+  const allMatches = useMemo(() => (q ? searchItems(products ?? [], q) : []), [products, q]);
+  const matches = allMatches.slice(0, MAX_SHOWN);
 
   const priced = rows.map((r) => {
     const p = byId.get(r.productId);
@@ -71,6 +74,7 @@ export function DocEditor({
 
   function add(p: Product) {
     setSearch('');
+    setActive(0);
     setRows((rs) => {
       const i = rs.findIndex((r) => r.productId === p.id);
       if (i >= 0) return rs.map((r, j) => (j === i ? { ...r, quantity: String((Number(r.quantity) || 0) + 1) } : r));
@@ -145,28 +149,61 @@ export function DocEditor({
         <h2>Items</h2>
         <div className="picker">
           <input
-            placeholder="Type an item name or code to add it"
+            placeholder="Type an item, e.g. ce for cement"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && matches[0] && add(matches[0])}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setActive(0);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowDown' && matches.length) {
+                e.preventDefault();
+                setActive((a) => Math.min(a + 1, matches.length - 1));
+              } else if (e.key === 'ArrowUp' && matches.length) {
+                e.preventDefault();
+                setActive((a) => Math.max(a - 1, 0));
+              } else if (e.key === 'Enter' && matches[active]) {
+                e.preventDefault();
+                add(matches[active]);
+              } else if (e.key === 'Escape') setSearch('');
+            }}
             autoFocus={mode === 'sale'}
             aria-label="Find item"
+            role="combobox"
+            aria-expanded={matches.length > 0}
+            aria-controls="picker-results"
           />
           {matches.length > 0 && (
-            <ul className="picker-list">
-              {matches.map((p) => (
-                <li key={p.id}>
-                  <button type="button" className="ghost" onClick={() => add(p)}>
-                    <span>
-                      {p.name} <span className="muted">{p.code}</span>
-                    </span>
-                    <span className="nowrap">
-                      {formatNgwee(p.priceNgwee)} · <span className={p.quantity === 0 ? 'down' : 'muted'}>{p.quantity} left</span>
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <div className="picker-pop">
+              <p className="picker-count">
+                {allMatches.length} {allMatches.length === 1 ? 'item matches' : 'items match'}
+                {allMatches.length > MAX_SHOWN && `, showing the first ${MAX_SHOWN}. Keep typing to narrow it down.`}
+                <span className="picker-keys">↑ ↓ to move, Enter to add</span>
+              </p>
+              <ul className="picker-list" id="picker-results" role="listbox">
+                {matches.map((p, i) => (
+                  <li key={p.id} role="option" aria-selected={i === active}>
+                    <button
+                      type="button"
+                      className={`ghost${i === active ? ' active' : ''}`}
+                      onMouseEnter={() => setActive(i)}
+                      onClick={() => add(p)}
+                      ref={(el) => {
+                        if (i === active && el) el.scrollIntoView({ block: 'nearest' });
+                      }}
+                    >
+                      <span>
+                        {highlight(p.name, q).map((part, k) => (part.hit ? <mark key={k}>{part.text}</mark> : <span key={k}>{part.text}</span>))}{' '}
+                        <span className="muted">{p.code}</span>
+                      </span>
+                      <span className="nowrap">
+                        {formatNgwee(p.priceNgwee)} · <span className={p.quantity === 0 ? 'down' : 'muted'}>{p.quantity} left</span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           {q && matches.length === 0 && <p className="muted">No item matches "{search}".</p>}
         </div>

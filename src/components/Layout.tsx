@@ -1,4 +1,5 @@
 import { asset } from '../lib/paths';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth, useCurrentUser } from '../auth/AuthContext';
 import { can, ROLE_LABEL, type Permission } from '../auth/permissions';
@@ -23,19 +24,41 @@ export function Layout() {
   const { logout } = useAuth();
   const online = useOnline();
   const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
+  const items = NAV.filter((n) => !n.needs || can(user.role, n.needs));
+  const current = [...items].reverse().find((n) => (n.to === '/' ? location.pathname === '/' : location.pathname.startsWith(n.to)));
+
+  useEffect(() => setMenuOpen(false), [location.pathname]);
+  useStackedTables(mainRef);
+
   return (
-    <div className="shell">
+    <div className={`shell${menuOpen ? ' menu-open' : ''}`}>
       <aside className="sidebar">
         <div className="brand">
           <img src={asset("icon.svg")} alt="" width={32} height={32} />
           <div>
             <strong>Patience Suppliers</strong>
-            <span>Point of sale</span>
+            <span>{current?.label ?? 'Point of sale'}</span>
           </div>
+          <button
+            type="button"
+            className="ghost menu-btn"
+            aria-expanded={menuOpen}
+            aria-controls="main-nav"
+            onClick={() => setMenuOpen((o) => !o)}
+          >
+            <span className={`burger${menuOpen ? ' x' : ''}`} aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </span>
+            {menuOpen ? 'Close' : 'Menu'}
+          </button>
         </div>
-        <nav>
-          {NAV.filter((n) => !n.needs || can(user.role, n.needs)).map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.to === '/'} className="tab">
+        <nav id="main-nav">
+          {items.map((n) => (
+            <NavLink key={n.to} to={n.to} end={n.to === '/'} className="tab" onClick={() => setMenuOpen(false)}>
               <Icon name={n.icon} />
               <span>{n.label}</span>
             </NavLink>
@@ -50,15 +73,40 @@ export function Layout() {
           <span className="who">
             {user.fullName} · <span className={`role role-${user.role}`}>{ROLE_LABEL[user.role]}</span>
           </span>
-          <button className="ghost" onClick={() => logout()}>
+          <button className="ghost signout" onClick={() => logout()} aria-label="Sign out">
             <Icon name="signout" size={18} />
-            Sign out
+            <span className="btn-text">Sign out</span>
           </button>
         </header>
-        <main className="content" key={location.pathname}>
+        <main className="content" key={location.pathname} ref={mainRef}>
           <Outlet />
         </main>
       </div>
     </div>
   );
+}
+
+/**
+ * On phones, tables are shown as stacked cards so no column is cut off.
+ * Each cell gets its column heading as a label, kept up to date as pages change.
+ */
+function useStackedTables(ref: React.RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const root = ref.current;
+    if (!root) return;
+    const label = () => {
+      for (const table of root.querySelectorAll('table')) {
+        const heads = [...table.querySelectorAll('thead th')].map((th) => th.textContent?.trim() ?? '');
+        for (const row of table.querySelectorAll('tbody tr'))
+          [...row.children].forEach((td, i) => {
+            const text = heads[i] ?? '';
+            if (td.getAttribute('data-label') !== text) td.setAttribute('data-label', text);
+          });
+      }
+    };
+    label();
+    const obs = new MutationObserver(label);
+    obs.observe(root, { childList: true, subtree: true });
+    return () => obs.disconnect();
+  });
 }

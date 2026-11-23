@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { Letterhead } from '../components/Letterhead';
 import { useOnline } from '../lib/useOnline';
-import { IS_PREVIEW } from '../lib/paths';
+import { IS_DEMO } from '../lib/paths';
 import { DEMO_LOGINS } from '../lib/demo';
+import { Hero } from '../components/Hero';
 
 export function LoginPage() {
   const [username, setUsername] = useState('');
@@ -31,7 +32,10 @@ export function LoginPage() {
   }
 
   return (
-    <div className="auth-page">
+    <div className="auth-page split">
+      <div className="auth-showcase">
+        <Hero greeting="Welcome to the shop counter" />
+      </div>
       <form className="card auth-card" onSubmit={submit}>
         <Letterhead />
         <h1>Sign in</h1>
@@ -60,7 +64,7 @@ export function LoginPage() {
         <button type="submit" disabled={busy}>
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
-        {IS_PREVIEW && (
+        {IS_DEMO && (
           <div className="demo-box">
             <strong>Demo logins</strong>
             {DEMO_LOGINS.map((d) => (
