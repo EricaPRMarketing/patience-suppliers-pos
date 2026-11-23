@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, MemoryRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { ROUTER_MODE } from './lib/paths';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { can, type Permission } from './auth/permissions';
 import { hasOwner } from './lib/users';
@@ -11,6 +12,8 @@ import { UsersPage } from './pages/UsersPage';
 import { ActivityPage } from './pages/ActivityPage';
 import { AccountPage } from './pages/AccountPage';
 import { SecurityPage } from './pages/SecurityPage';
+import { DocList, DocViewPage, EditQuotePage, NewDocPage, SalesPage } from './pages/docs/DocPages';
+import { PrintPage } from './pages/docs/PrintPage';
 import { ComingSoonPage } from './pages/ComingSoonPage';
 import { InventoryPage } from './pages/inventory/InventoryPage';
 
@@ -43,9 +46,14 @@ function AppRoutes() {
         }
       >
         <Route index element={<DashboardPage />} />
-        <Route path="sales" element={<Guard needs="sales.create"><ComingSoonPage title="Sales" step="step 3" icon="sales" features={["Quick till screen to sell from stock", "Works offline and syncs later", "Prints or shares a receipt"]} /></Guard>} />
-        <Route path="quotations" element={<Guard needs="quotes.create"><ComingSoonPage title="Quotations" step="step 3" icon="quotations" features={["Build a quote from inventory items", "PDF on the Patience Suppliers letterhead", "Turn a quote into an invoice in one click"]} /></Guard>} />
-        <Route path="invoices" element={<Guard needs="invoices.create"><ComingSoonPage title="Invoices" step="step 3" icon="invoices" features={["Kwacha invoices, no VAT", "Stock goes down when an invoice is issued", "Shows paid, part paid or unpaid"]} /></Guard>} />
+        <Route path="sales" element={<Guard needs="sales.create"><SalesPage /></Guard>} />
+        <Route path="quotations" element={<Guard needs="quotes.create"><DocList kind="quote" /></Guard>} />
+        <Route path="quotations/new" element={<Guard needs="quotes.create"><NewDocPage kind="quote" /></Guard>} />
+        <Route path="quotations/:id" element={<Guard needs="quotes.create"><DocViewPage /></Guard>} />
+        <Route path="quotations/:id/edit" element={<Guard needs="quotes.create"><EditQuotePage /></Guard>} />
+        <Route path="invoices" element={<Guard needs="invoices.create"><DocList kind="invoice" /></Guard>} />
+        <Route path="invoices/new" element={<Guard needs="invoices.create"><NewDocPage kind="invoice" /></Guard>} />
+        <Route path="invoices/:id" element={<Guard needs="invoices.create"><DocViewPage /></Guard>} />
         <Route path="inventory" element={<Guard needs="inventory.view"><InventoryPage /></Guard>} />
         <Route path="payments" element={<Guard needs="payments.confirm"><ComingSoonPage title="Payments" step="step 4" icon="payments" features={["Mobile money or bank with proof of payment upload", "Manager or owner confirms each payment", "Online payment gateway"]} /></Guard>} />
         <Route path="users" element={<Guard needs="users.view"><UsersPage /></Guard>} />
@@ -53,17 +61,19 @@ function AppRoutes() {
         <Route path="security" element={<Guard needs="security.view"><SecurityPage /></Guard>} />
         <Route path="account" element={<AccountPage />} />
       </Route>
+      <Route path="/print/:id" element={<Guard><PrintPage /></Guard>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
 
 export default function App() {
+  const Router = ROUTER_MODE === 'memory' ? MemoryRouter : BrowserRouter;
   return (
-    <BrowserRouter>
+    <Router>
       <AuthProvider>
         <AppRoutes />
       </AuthProvider>
-    </BrowserRouter>
+    </Router>
   );
 }

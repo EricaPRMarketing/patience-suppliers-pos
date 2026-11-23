@@ -1,3 +1,4 @@
+import { asset } from '../lib/paths';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth, useCurrentUser } from '../auth/AuthContext';
 import { can, ROLE_LABEL, type Permission } from '../auth/permissions';
@@ -26,7 +27,7 @@ export function Layout() {
     <div className="shell">
       <aside className="sidebar">
         <div className="brand">
-          <img src="/icon.svg" alt="" width={32} height={32} />
+          <img src={asset("icon.svg")} alt="" width={32} height={32} />
           <div>
             <strong>Patience Suppliers</strong>
             <span>Point of sale</span>

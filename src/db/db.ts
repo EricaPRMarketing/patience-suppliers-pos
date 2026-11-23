@@ -68,6 +68,63 @@ export interface StockMovement extends SyncFields {
   username: string;
 }
 
+export interface DocLine {
+  productId: string;
+  code: string;
+  name: string;
+  unit: string;
+  quantity: number;
+  /** Price from inventory at the time, in ngwee. */
+  unitPriceNgwee: number;
+  /** Discount on this line in ngwee (managers and owner only). */
+  discountNgwee: number;
+}
+
+export interface Customer {
+  name: string;
+  phone: string;
+  email: string;
+  address: string;
+}
+
+export interface Payment {
+  id: string;
+  at: string;
+  method: 'cash' | 'mobile_money' | 'bank' | 'gateway';
+  amountNgwee: number;
+  reference: string;
+  userId: string;
+  username: string;
+  /** Manual payments with proof of payment wait for a manager or the owner (step 4). */
+  status: 'confirmed' | 'pending' | 'rejected';
+}
+
+export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'converted' | 'cancelled';
+export type InvoiceStatus = 'issued' | 'void';
+
+export interface SalesDoc extends SyncFields {
+  kind: 'quote' | 'invoice';
+  /** Q-2026-0001 or INV-2026-0001. Numbers are never reused, so a gap means a deleted document. */
+  number: string;
+  status: QuoteStatus | InvoiceStatus;
+  customer: Customer;
+  lines: DocLine[];
+  subtotalNgwee: number;
+  discountNgwee: number;
+  totalNgwee: number;
+  notes: string;
+  /** Quotes: valid until. Invoices: due date. ISO date (yyyy-mm-dd). */
+  dateLimit: string;
+  createdBy: string;
+  createdByName: string;
+  fromQuoteId: string | null;
+  convertedToId: string | null;
+  payments: Payment[];
+  voidReason: string;
+  /** Quick till sale paid on the spot. */
+  isCashSale: boolean;
+}
+
 export interface Setting {
   key: string;
   value: string;
@@ -79,6 +136,7 @@ export class PosDatabase extends Dexie {
   settings!: EntityTable<Setting, 'key'>;
   products!: EntityTable<Product, 'id'>;
   stockMovements!: EntityTable<StockMovement, 'id'>;
+  docs!: EntityTable<SalesDoc, 'id'>;
 
   constructor(name = 'patience-pos') {
     super(name);
@@ -93,6 +151,9 @@ export class PosDatabase extends Dexie {
     });
     this.version(3).stores({
       activity: 'id, at, userId, role, action, syncState, seq',
+    });
+    this.version(4).stores({
+      docs: 'id, kind, number, status, createdAt, createdBy, syncState',
     });
   }
 }

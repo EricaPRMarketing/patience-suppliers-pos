@@ -13,6 +13,7 @@ const PATHS: Record<string, string> = {
   alert: 'M12 2 1 21h22zm-1 7h2v6h-2zm0 8h2v2h-2z',
   shield: 'M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5zm-1.2 14.2-3.5-3.5 1.4-1.4 2.1 2.1 4.9-4.9 1.4 1.4z',
   lock: 'M7 10V7a5 5 0 0 1 10 0v3h2v12H5V10zm2 0h6V7a3 3 0 0 0-6 0z',
+  print: 'M6 2h12v5H6zM4 8h16a2 2 0 0 1 2 2v7h-4v5H6v-5H2v-7a2 2 0 0 1 2-2zm4 9v3h8v-3zm10-6.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2z',
   signout: 'M10 3H4v18h6v-2H6V5h4zm6.6 4.4L15.2 8.8 17.4 11H9v2h8.4l-2.2 2.2 1.4 1.4L21.2 12z',
 };
 
