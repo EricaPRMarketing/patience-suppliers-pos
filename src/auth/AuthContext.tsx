@@ -1,10 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { db, type User } from '../db/db';
-import { authenticate } from '../lib/users';
+import { signIn, type SignInResult } from '../lib/users';
 import { logActivity } from '../lib/activity';
 
 const SESSION_KEY = 'pos.session';
 const SESSION_HOURS = 12;
+/** Sign out automatically after this long with no taps, clicks or typing. */
+export const IDLE_MINUTES = 15;
 
 interface Session {
   userId: string;
@@ -34,7 +36,7 @@ function writeSession(s: Session | null) {
 interface AuthValue {
   user: User | null;
   loading: boolean;
-  login: (username: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<SignInResult>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -60,17 +62,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const login = useCallback(async (username: string, password: string) => {
-    const u = await authenticate(username, password);
-    if (!u) return false;
-    writeSession({ userId: u.id, expires: Date.now() + SESSION_HOURS * 3600_000 });
-    setUser(u);
-    return true;
+    const r = await signIn(username, password);
+    if (r.ok) {
+      writeSession({ userId: r.user.id, expires: Date.now() + SESSION_HOURS * 3600_000 });
+      setUser(r.user);
+    }
+    return r;
   }, []);
 
   const logout = useCallback(async () => {
     if (user) await logActivity(user, 'Signed out');
     writeSession(null);
     setUser(null);
+  }, [user]);
+
+  // Automatic sign-out when the till is left unattended.
+  useEffect(() => {
+    if (!user) return;
+    let last = Date.now();
+    const touch = () => (last = Date.now());
+    const events = ['pointerdown', 'keydown', 'scroll', 'touchstart'];
+    events.forEach((e) => window.addEventListener(e, touch, { passive: true }));
+    const timer = window.setInterval(async () => {
+      if (Date.now() - last > IDLE_MINUTES * 60_000) {
+        await logActivity(user, 'Signed out automatically', `No activity for ${IDLE_MINUTES} minutes`);
+        writeSession(null);
+        setUser(null);
+      }
+    }, 30_000);
+    return () => {
+      events.forEach((e) => window.removeEventListener(e, touch));
+      window.clearInterval(timer);
+    };
   }, [user]);
 
   return <AuthContext.Provider value={{ user, loading, login, logout, refresh }}>{children}</AuthContext.Provider>;

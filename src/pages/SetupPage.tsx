@@ -48,6 +48,7 @@ export function SetupPage({ onDone }: { onDone: () => void }) {
           Username
           <input value={username} onChange={(e) => setUsername(e.target.value)} autoCapitalize="none" required />
         </label>
+        <p className="muted small">At least 8 characters, with letters and numbers.</p>
         <label>
           Password
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />

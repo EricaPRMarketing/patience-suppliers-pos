@@ -21,7 +21,7 @@ export async function hasOwner(): Promise<boolean> {
 export async function createOwner(input: { username: string; fullName: string; password: string }): Promise<User> {
   // Hash before opening the transaction: IndexedDB transactions close if they wait on WebCrypto.
   const user = await prepareUser({ ...input, role: 'owner' }, null);
-  return db.transaction('rw', db.users, db.activity, async () => {
+  return db.transaction('rw', db.users, db.activity, db.settings, async () => {
     if (await hasOwner()) throw new UserError('An owner account already exists.');
     await addUser(user);
     await logActivity(user, 'Owner account created', user.fullName);
@@ -36,7 +36,7 @@ async function prepareUser(
   const username = normaliseUsername(input.username);
   checkUsername(username);
   if (!input.fullName.trim()) throw new UserError('Enter the full name.');
-  const problem = passwordProblem(input.password);
+  const problem = passwordProblem(input.password, username);
   if (problem) throw new UserError(problem);
   const { hash, salt } = await hashPassword(input.password);
   return {
@@ -84,22 +84,24 @@ export async function setUserActive(actor: User, userId: string, active: boolean
 
 export async function resetPassword(actor: User, userId: string, newPassword: string) {
   const target = await loadManageable(actor, userId);
-  const problem = passwordProblem(newPassword);
+  const problem = passwordProblem(newPassword, target.username);
   if (problem) throw new UserError(problem);
   const { hash, salt } = await hashPassword(newPassword);
   await db.users.update(userId, {
     passwordHash: hash,
     passwordSalt: salt,
+    failedAttempts: 0,
+    lockedUntil: null,
     updatedAt: new Date().toISOString(),
     syncState: 'pending',
   });
-  await logActivity(actor, 'Password reset', `${target.fullName} (${target.username})`);
+  await logActivity(actor, 'Password reset', `${target.fullName} (${target.username})`, { targetUserId: target.id });
 }
 
 export async function changeOwnPassword(actor: User, current: string, next: string) {
   if (!(await verifyPassword(current, actor.passwordHash, actor.passwordSalt)))
     throw new UserError('Your current password is wrong.');
-  const problem = passwordProblem(next);
+  const problem = passwordProblem(next, actor.username);
   if (problem) throw new UserError(problem);
   const { hash, salt } = await hashPassword(next);
   await db.users.update(actor.id, {
@@ -111,19 +113,61 @@ export async function changeOwnPassword(actor: User, current: string, next: stri
   await logActivity(actor, 'Changed own password');
 }
 
-/** Returns the user on success, or null. Failed attempts are logged against the account when it exists. */
-export async function authenticate(username: string, password: string): Promise<User | null> {
+export const MAX_ATTEMPTS = 5;
+export const LOCK_MINUTES = 15;
+
+export type SignInResult =
+  | { ok: true; user: User }
+  | { ok: false; reason: 'invalid' }
+  | { ok: false; reason: 'locked'; until: string };
+
+/**
+ * Checks a username and password. After MAX_ATTEMPTS wrong passwords in a row the account is locked for
+ * LOCK_MINUTES, and every failure, lock and blocked attempt is logged for the owner.
+ * The same message is shown for an unknown username, a wrong password and a deactivated account.
+ */
+export async function signIn(username: string, password: string, now = new Date()): Promise<SignInResult> {
   const user = await db.users.where('username').equals(normaliseUsername(username)).first();
-  if (!user) return null;
+  if (!user) {
+    // Spend the same time as a real check so response time does not reveal which usernames exist.
+    await verifyPassword(password, '00', '00');
+    return { ok: false, reason: 'invalid' };
+  }
+  if (user.lockedUntil && new Date(user.lockedUntil) > now) {
+    await logActivity(user, 'Sign-in attempt while locked', '', { lockedUntil: user.lockedUntil });
+    return { ok: false, reason: 'locked', until: user.lockedUntil };
+  }
   const ok = await verifyPassword(password, user.passwordHash, user.passwordSalt);
   if (!ok) {
-    await logActivity(user, 'Failed sign-in attempt');
-    return null;
+    const attempts = (user.failedAttempts ?? 0) + 1;
+    if (attempts >= MAX_ATTEMPTS) {
+      const until = new Date(now.getTime() + LOCK_MINUTES * 60_000).toISOString();
+      await db.users.update(user.id, { failedAttempts: 0, lockedUntil: until, updatedAt: now.toISOString(), syncState: 'pending' });
+      await logActivity(user, 'Account locked', `${MAX_ATTEMPTS} wrong passwords in a row`, { attempts });
+      return { ok: false, reason: 'locked', until };
+    }
+    await db.users.update(user.id, { failedAttempts: attempts, updatedAt: now.toISOString(), syncState: 'pending' });
+    await logActivity(user, 'Failed sign-in attempt', `Attempt ${attempts} of ${MAX_ATTEMPTS}`, { attempts });
+    return { ok: false, reason: 'invalid' };
   }
   if (!user.active) {
     await logActivity(user, 'Blocked sign-in (account deactivated)');
-    return null;
+    return { ok: false, reason: 'invalid' };
   }
+  if (user.failedAttempts || user.lockedUntil)
+    await db.users.update(user.id, { failedAttempts: 0, lockedUntil: null, updatedAt: now.toISOString(), syncState: 'pending' });
   await logActivity(user, 'Signed in');
-  return user;
+  return { ok: true, user: { ...user, failedAttempts: 0, lockedUntil: null } };
+}
+
+/** Kept for existing callers and tests: the user on success, otherwise null. */
+export async function authenticate(username: string, password: string): Promise<User | null> {
+  const r = await signIn(username, password);
+  return r.ok ? r.user : null;
+}
+
+export async function unlockUser(actor: User, userId: string) {
+  const target = await loadManageable(actor, userId);
+  await db.users.update(userId, { failedAttempts: 0, lockedUntil: null, updatedAt: new Date().toISOString(), syncState: 'pending' });
+  await logActivity(actor, 'Account unlocked', `${target.fullName} (${target.username})`, { targetUserId: target.id });
 }

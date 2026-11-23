@@ -20,15 +20,15 @@ let owner: Awaited<ReturnType<typeof createOwner>>;
 beforeEach(async () => {
   await db.delete();
   await db.open();
-  owner = await createOwner({ username: 'owner', fullName: 'Owner', password: 'secret1' });
+  owner = await createOwner({ username: 'owner', fullName: 'Owner', password: 'secret12' });
 });
 
 describe('inventory', () => {
   it('only lets managers and the owner change stock', async () => {
-    const staff = await createUser(owner, { username: 'till', fullName: 'Till', password: 'secret1', role: 'staff' });
+    const staff = await createUser(owner, { username: 'till', fullName: 'Till', password: 'secret12', role: 'staff' });
     await expect(createProduct(staff, item())).rejects.toBeInstanceOf(InventoryError);
     await expect(importProducts(staff, [item()], 'x.csv')).rejects.toBeInstanceOf(InventoryError);
-    const manager = await createUser(owner, { username: 'mgr', fullName: 'Mgr', password: 'secret1', role: 'manager' });
+    const manager = await createUser(owner, { username: 'mgr', fullName: 'Mgr', password: 'secret12', role: 'manager' });
     await expect(createProduct(manager, item())).resolves.toMatchObject({ name: 'Cement' });
   });
 

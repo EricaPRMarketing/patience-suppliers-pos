@@ -13,6 +13,7 @@ const NAV: { to: string; label: string; icon: string; needs?: Permission }[] = [
   { to: '/payments', label: 'Payments', icon: 'payments', needs: 'payments.confirm' },
   { to: '/users', label: 'Users', icon: 'users', needs: 'users.view' },
   { to: '/activity', label: 'Activity log', icon: 'activity' },
+  { to: '/security', label: 'Security', icon: 'shield', needs: 'security.view' },
   { to: '/account', label: 'My account', icon: 'account' },
 ];
 
