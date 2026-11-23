@@ -454,9 +454,13 @@ export function SalesPage() {
       {last && (
         <p className="notice">
           Sale {last.number} saved: {formatNgwee(last.totalNgwee)} paid in cash.{' '}
-          <a href={pageUrl(`/print/${last.id}`)} target={USE_HASH ? undefined : '_blank'} rel="noreferrer">
-            Print receipt
-          </a>{' '}
+          {USE_HASH ? (
+            <Link to={`/print/${last.id}`}>Print receipt</Link>
+          ) : (
+            <a href={pageUrl(`/print/${last.id}`)} target="_blank" rel="noreferrer">
+              Print receipt
+            </a>
+          )}{' '}
           · <Link to={`/invoices/${last.id}`}>Open</Link>
         </p>
       )}

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:preview": "VITE_ROUTER=memory vite build && python3 scripts/inline_preview.py",
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc -b"

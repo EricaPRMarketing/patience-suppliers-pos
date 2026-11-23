@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { BrowserRouter, HashRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { USE_HASH } from './lib/paths';
+import { BrowserRouter, MemoryRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { ROUTER_MODE } from './lib/paths';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { can, type Permission } from './auth/permissions';
 import { hasOwner } from './lib/users';
@@ -68,7 +68,7 @@ function AppRoutes() {
 }
 
 export default function App() {
-  const Router = USE_HASH ? HashRouter : BrowserRouter;
+  const Router = ROUTER_MODE === 'memory' ? MemoryRouter : BrowserRouter;
   return (
     <Router>
       <AuthProvider>

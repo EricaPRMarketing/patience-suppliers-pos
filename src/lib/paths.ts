@@ -1,11 +1,17 @@
-/** Works both on a normal web host and when the app is served from a sub-folder (hash routing). */
-export const USE_HASH = import.meta.env.VITE_HASH_ROUTER === '1';
+/**
+ * Router mode. "browser" for normal hosting, "memory" for the preview link, where the app runs inside a frame
+ * and cannot use the address bar.
+ */
+export const ROUTER_MODE: 'browser' | 'memory' = import.meta.env.VITE_ROUTER === 'memory' ? 'memory' : 'browser';
+export const USE_HASH = ROUTER_MODE !== 'browser';
+export const IS_PREVIEW = ROUTER_MODE === 'memory';
 
 export function asset(path: string): string {
+  if (path.startsWith('data:')) return path;
   return import.meta.env.BASE_URL + path.replace(/^\//, '');
 }
 
-/** URL for opening an app page in a new tab. */
+/** URL for opening an app page in a new tab (normal hosting only). */
 export function pageUrl(path: string): string {
-  return USE_HASH ? `${window.location.pathname}${window.location.search}#${path}` : path;
+  return path;
 }

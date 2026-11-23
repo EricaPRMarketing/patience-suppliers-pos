@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { createOwner, UserError } from '../lib/users';
 import { useAuth } from '../auth/AuthContext';
 import { Letterhead } from '../components/Letterhead';
+import { IS_PREVIEW } from '../lib/paths';
+import { seedDemo } from '../lib/demo';
 
 export function SetupPage({ onDone }: { onDone: () => void }) {
   const [fullName, setFullName] = useState('');
@@ -35,6 +37,27 @@ export function SetupPage({ onDone }: { onDone: () => void }) {
     <div className="auth-page">
       <form className="card auth-card" onSubmit={submit}>
         <Letterhead />
+        {IS_PREVIEW && (
+          <div className="demo-box">
+            <strong>Preview link</strong>
+            <p className="muted small">
+              Load example accounts, stock, quotations and invoices to look around. Everything stays in this browser only.
+            </p>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                await seedDemo();
+                onDone();
+                await login('owner', 'Siavonga2026');
+                navigate('/');
+              }}
+            >
+              {busy ? 'Loading…' : 'Open the demo'}
+            </button>
+          </div>
+        )}
         <h1>Set up the owner account</h1>
         <p className="muted">
           This is the first time the app has been opened on this device. The owner account can see everything and

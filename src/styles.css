@@ -392,3 +392,6 @@ table.sheet-lines tbody tr:hover { background: inherit; }
   .sheet { box-shadow: none; margin: 0; max-width: none; min-height: 297mm; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; animation: none !important; }
 }
+.demo-box { display: grid; gap: 0.5rem; padding: 0.9rem; border: 2px dashed var(--lime); border-radius: 12px; background: #f7fbef; }
+.demo-box p { margin: 0; }
+.demo-box button.ghost { justify-content: flex-start; font-family: ui-monospace, Menlo, monospace; font-size: 0.85rem; }

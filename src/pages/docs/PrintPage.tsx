@@ -5,6 +5,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/db';
 import { formatNgwee } from '../../lib/format';
 import { lineTotal, paidNgwee } from '../../lib/docs';
+import { IS_PREVIEW } from '../../lib/paths';
 
 const date = (iso: string) =>
   new Date(iso.length === 10 ? iso + 'T00:00:00' : iso).toLocaleDateString('en-ZM', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -18,6 +19,7 @@ export function PrintPage() {
     if (!doc) return;
     document.title = `${doc.number} - ${doc.customer.name}`;
     const img = document.querySelector<HTMLImageElement>('.print-letterhead');
+    if (IS_PREVIEW) return;
     const go = () => setTimeout(() => window.print(), 300);
     if (img && !img.complete) img.addEventListener('load', go, { once: true });
     else go();
@@ -34,8 +36,14 @@ export function PrintPage() {
         <button className="ghost" onClick={() => window.history.back()}>
           Back
         </button>
-        <button onClick={() => window.print()}>Print or save as PDF</button>
-        <span className="muted">In the print window, choose "Save as PDF" to make a PDF file.</span>
+        {IS_PREVIEW ? (
+          <span className="muted">This is the preview link, which cannot print. In the installed app this page opens the print window, where "Save as PDF" makes the PDF.</span>
+        ) : (
+          <>
+            <button onClick={() => window.print()}>Print or save as PDF</button>
+            <span className="muted">In the print window, choose "Save as PDF" to make a PDF file.</span>
+          </>
+        )}
       </div>
       <article className="sheet">
         <img className="print-letterhead" src={asset("letterhead.jpg")} alt="Patience Suppliers (Z) Ltd" />

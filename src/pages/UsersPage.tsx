@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Role, type User } from '../db/db';
+import { Modal } from '../components/Modal';
 import { useCurrentUser } from '../auth/AuthContext';
 import { canManageRole, ROLE_LABEL, ROLE_MATRIX } from '../auth/permissions';
 import { createUser, resetPassword, setUserActive, unlockUser, UserError } from '../lib/users';
@@ -91,14 +92,17 @@ function UserRow({ actor, user, onMessage }: { actor: User; user: User; onMessag
       onMessage(e instanceof UserError ? e.message : 'Could not unlock the account.');
     }
   }
+  const [resetting, setResetting] = useState(false);
+  const [pw, setPw] = useState('');
+  const [pwError, setPwError] = useState('');
   async function reset() {
-    const pw = window.prompt(`New password for ${user.fullName} (at least 8 characters, letters and numbers):`);
-    if (!pw) return;
     try {
       await resetPassword(actor, user.id, pw);
-      onMessage(`Password reset for ${user.fullName}.`);
+      setResetting(false);
+      setPw('');
+      onMessage(`Password reset for ${user.fullName}. Give them the new password in person.`);
     } catch (e) {
-      onMessage(e instanceof UserError ? e.message : 'Could not reset the password.');
+      setPwError(e instanceof UserError ? e.message : 'Could not reset the password.');
     }
   }
   return (
@@ -117,9 +121,26 @@ function UserRow({ actor, user, onMessage }: { actor: User; user: User; onMessag
                 Unlock
               </button>
             )}
-            <button className="ghost" onClick={reset}>
+            <button className="ghost" onClick={() => setResetting(true)}>
               Reset password
             </button>
+            {resetting && (
+              <Modal title={`New password for ${user.fullName}`} onClose={() => setResetting(false)}>
+                <div className="form-grid">
+                  <label className="span-all">
+                    New password (at least 8 characters, letters and numbers)
+                    <input type="text" value={pw} onChange={(e) => setPw(e.target.value)} autoFocus />
+                  </label>
+                  {pwError && <p className="error">{pwError}</p>}
+                  <div className="form-actions">
+                    <button className="ghost" onClick={() => setResetting(false)}>
+                      Cancel
+                    </button>
+                    <button onClick={reset}>Set password</button>
+                  </div>
+                </div>
+              </Modal>
+            )}
             <button className="ghost" onClick={toggle}>
               {user.active ? 'Deactivate' : 'Reactivate'}
             </button>
