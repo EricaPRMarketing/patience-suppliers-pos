@@ -1,14 +1,19 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { db } from '../db/db';
 import { useCurrentUser } from '../auth/AuthContext';
-import { canSeeActivityOf, ROLE_LABEL } from '../auth/permissions';
+import { can, canSeeActivityOf, ROLE_LABEL } from '../auth/permissions';
+import { Hero } from '../components/Hero';
+import { Icon } from '../components/Icon';
 import { formatDateTime } from '../lib/format';
 import { isLowStock } from '../lib/inventory';
 import { useAlerts } from './SecurityPage';
 
 export function DashboardPage() {
   const user = useCurrentUser();
+  const navigate = useNavigate();
+  const hour = new Date().getHours();
+  const hello = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const recent = useLiveQuery(
     async () =>
       (await db.activity.orderBy('at').reverse().limit(200).toArray())
@@ -30,8 +35,24 @@ export function DashboardPage() {
 
   return (
     <>
-      <h1>Welcome, {user.fullName.split(' ')[0]}</h1>
-      <p className="muted">Signed in as {ROLE_LABEL[user.role].toLowerCase()}.</p>
+      <Hero greeting={`${hello}, ${user.fullName.split(' ')[0]}`} canOpen={can(user.role, 'inventory.view')}>
+        {can(user.role, 'sales.create') && (
+          <button className="hero-btn" onClick={() => navigate('/sales')}>
+            <Icon name="sales" size={18} /> New sale
+          </button>
+        )}
+        {can(user.role, 'quotes.create') && (
+          <button className="hero-btn alt" onClick={() => navigate('/quotations/new')}>
+            <Icon name="plus" size={18} /> Quotation
+          </button>
+        )}
+        {can(user.role, 'invoices.create') && (
+          <button className="hero-btn alt" onClick={() => navigate('/invoices/new')}>
+            <Icon name="plus" size={18} /> Invoice
+          </button>
+        )}
+      </Hero>
+      <p className="muted">Signed in as {ROLE_LABEL[user.role].toLowerCase()}. Tap a sticker to jump to that part of the stock list.</p>
       {user.role !== 'staff' && counts && (
         <div className="tiles">
           <div className="tile">
