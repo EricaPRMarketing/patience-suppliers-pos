@@ -95,8 +95,26 @@ export interface Payment {
   reference: string;
   userId: string;
   username: string;
-  /** Manual payments with proof of payment wait for a manager or the owner (step 4). */
+  /** Manual payments with proof of payment wait for a manager or the owner to check them. */
   status: 'confirmed' | 'pending' | 'rejected';
+  /** Mobile money network or bank the customer paid into, e.g. "MTN MoMo". */
+  channel?: string;
+  /** Phone number or account the customer paid from. */
+  payer?: string;
+  /** Proof of payment (screenshot, SMS photo or bank slip) kept in the files table. */
+  popFileId?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  reviewNote?: string;
+}
+
+/** A file kept on the device, such as a proof of payment. */
+export interface StoredFile extends SyncFields {
+  name: string;
+  type: string;
+  size: number;
+  data: ArrayBuffer;
+  uploadedBy: string;
 }
 
 export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'converted' | 'cancelled';
@@ -137,6 +155,7 @@ export class PosDatabase extends Dexie {
   products!: EntityTable<Product, 'id'>;
   stockMovements!: EntityTable<StockMovement, 'id'>;
   docs!: EntityTable<SalesDoc, 'id'>;
+  files!: EntityTable<StoredFile, 'id'>;
 
   constructor(name = 'patience-pos') {
     super(name);
@@ -154,6 +173,9 @@ export class PosDatabase extends Dexie {
     });
     this.version(4).stores({
       docs: 'id, kind, number, status, createdAt, createdBy, syncState',
+    });
+    this.version(5).stores({
+      files: 'id, createdAt, syncState',
     });
   }
 }

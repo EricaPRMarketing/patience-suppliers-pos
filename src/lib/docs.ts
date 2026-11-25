@@ -321,7 +321,8 @@ export async function recordCashPayment(actor: User, id: string, amountNgwee: nu
     const d = await db.docs.get(id);
     if (!d || d.kind !== 'invoice') throw new DocError('Invoice not found.');
     if (d.status === 'void') throw new DocError('This invoice is void.');
-    const due = d.totalNgwee - paidNgwee(d);
+    const pending = d.payments.filter((p) => p.status === 'pending').reduce((s, p) => s + p.amountNgwee, 0);
+    const due = d.totalNgwee - paidNgwee(d) - pending;
     if (!Number.isFinite(amountNgwee) || amountNgwee <= 0) throw new DocError('Enter the amount received.');
     if (amountNgwee > due) throw new DocError(`Only ${formatNgwee(due)} is still owed.`);
     const payment: Payment = {

@@ -1,12 +1,11 @@
 import { pageUrl, USE_HASH } from '../../lib/paths';
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type SalesDoc } from '../../db/db';
 import { useCurrentUser } from '../../auth/AuthContext';
 import { can } from '../../auth/permissions';
 import { formatDateTime, formatNgwee } from '../../lib/format';
-import { parseKwacha } from '../../lib/money';
 import {
   convertQuote,
   createInvoice,
@@ -15,7 +14,6 @@ import {
   lineTotal,
   paidNgwee,
   paymentState,
-  recordCashPayment,
   setQuoteStatus,
   updateQuote,
   voidInvoice,
@@ -23,6 +21,9 @@ import {
 import { Icon } from '../../components/Icon';
 import { Modal } from '../../components/Modal';
 import { DocEditor } from './DocEditor';
+import { TakePayment } from '../payments/TakePayment';
+import { METHOD_LABEL, openBalance, openFile } from '../../lib/payments';
+import { searchItems } from '../../lib/search';
 
 const formatDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('en-ZM', { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -189,6 +190,7 @@ export function DocViewPage() {
   }, [id]);
   const [dialog, setDialog] = useState<'pay' | 'void' | null>(null);
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
 
   if (doc === undefined) return null;
   const isQuote = doc.kind === 'quote';
@@ -240,7 +242,11 @@ export function DocViewPage() {
               Turn into invoice
             </button>
           )}
-          {!isQuote && doc.status !== 'void' && owed > 0 && <button onClick={() => setDialog('pay')}>Record cash payment</button>}
+          {((!isQuote && doc.status !== 'void' && openBalance(doc) > 0) || open) && (
+            <button onClick={() => setDialog('pay')}>
+              <Icon name="payments" size={18} /> Take payment
+            </button>
+          )}
           {!isQuote && doc.status !== 'void' && can(user.role, 'docs.void') && (
             <button className="ghost danger" onClick={() => setDialog('void')}>
               Void invoice
@@ -254,6 +260,7 @@ export function DocViewPage() {
         </div>
       </div>
       {error && <p className="error">{error}</p>}
+      {message && <p className="notice">{message}</p>}
       {doc.status === 'void' && <p className="notice danger-notice">Voided: {doc.voidReason}. The stock was put back.</p>}
       {linked && (
         <p className="muted">
@@ -338,57 +345,90 @@ export function DocViewPage() {
       {!isQuote && doc.payments.length > 0 && (
         <section className="card">
           <h2>Payments</h2>
-          <ul className="low-list">
+          <ul className="pay-list">
             {doc.payments.map((p) => (
               <li key={p.id}>
                 <span>
-                  {formatDateTime(p.at)} · {p.method === 'cash' ? 'Cash' : p.method} · received by {p.username}
+                  <strong>{formatNgwee(p.amountNgwee)}</strong> {METHOD_LABEL[p.method]}
+                  {p.channel && ` · ${p.channel}`}
+                  {p.method !== 'cash' && p.reference && ` · ref ${p.reference}`}
+                  <span className="muted small block">
+                    {formatDateTime(p.at)} · recorded by {p.username}
+                    {p.reviewedBy && ` · ${p.status === 'confirmed' ? 'confirmed' : 'rejected'} by ${p.reviewedBy}`}
+                    {p.reviewNote && `: ${p.reviewNote}`}
+                  </span>
                 </span>
-                <strong>{formatNgwee(p.amountNgwee)}</strong>
+                <span className="pay-side">
+                  {p.popFileId && <ProofLink id={p.popFileId} />}
+                  <PayStatus status={p.status} />
+                </span>
               </li>
             ))}
           </ul>
         </section>
       )}
 
-      {dialog === 'pay' && <PayDialog doc={doc} owed={owed} onClose={() => setDialog(null)} />}
+      {dialog === 'pay' && (
+        <Modal title={`Take payment for ${doc.number}`} onClose={() => setDialog(null)} wide>
+          <TakePayment
+            doc={doc}
+            onCancel={() => setDialog(null)}
+            onDone={(inv, msg) => {
+              setDialog(null);
+              if (inv.id !== doc.id) navigate(`/invoices/${inv.id}`);
+              setMessage(msg);
+            }}
+          />
+        </Modal>
+      )}
       {dialog === 'void' && <VoidDialog doc={doc} onClose={() => setDialog(null)} />}
     </>
   );
 }
 
-function PayDialog({ doc, owed, onClose }: { doc: SalesDoc; owed: number; onClose: () => void }) {
-  const user = useCurrentUser();
-  const [amount, setAmount] = useState((owed / 100).toFixed(2));
-  const [error, setError] = useState('');
+export function PayStatus({ status }: { status: 'confirmed' | 'pending' | 'rejected' }) {
   return (
-    <Modal title={`Cash payment for ${doc.number}`} onClose={onClose}>
-      <div className="form-grid">
-        <label>
-          Amount received (K)
-          <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" autoFocus />
-        </label>
-        <p className="muted span-all">Still owed: {formatNgwee(owed)}. Mobile money and bank payments with proof of payment come in the next step.</p>
-        {error && <p className="error">{error}</p>}
-        <div className="form-actions">
-          <button className="ghost" onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            onClick={async () => {
-              try {
-                await recordCashPayment(user, doc.id, parseKwacha(amount) ?? NaN);
-                onClose();
-              } catch (e) {
-                setError(e instanceof Error ? e.message : 'Could not record the payment.');
-              }
-            }}
-          >
-            Record payment
-          </button>
-        </div>
-      </div>
-    </Modal>
+    <span className={`chip pay-${status}`}>{status === 'confirmed' ? 'Confirmed' : status === 'pending' ? 'Waiting for check' : 'Rejected'}</span>
+  );
+}
+
+/** Shows a proof of payment kept on this device. */
+export function ProofLink({ id, label = 'View proof' }: { id: string; label?: string }) {
+  const [file, setFile] = useState<{ url: string; type: string; name: string } | null>(null);
+  const [missing, setMissing] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        className="ghost small-btn"
+        onClick={async () => {
+          const f = await openFile(id);
+          if (f) setFile(f);
+          else setMissing(true);
+        }}
+      >
+        {missing ? 'Proof not on this device' : label}
+      </button>
+      {file && (
+        <Modal
+          title="Proof of payment"
+          wide
+          onClose={() => {
+            URL.revokeObjectURL(file.url);
+            setFile(null);
+          }}
+        >
+          {file.type.startsWith('image/') ? (
+            <img className="proof-img" src={file.url} alt="Proof of payment" />
+          ) : (
+            <object className="proof-pdf" data={file.url} type={file.type} aria-label="Proof of payment">
+              <p>This device cannot show the PDF here.</p>
+            </object>
+          )}
+          <p className="muted small">{file.name}</p>
+        </Modal>
+      )}
+    </>
   );
 }
 
@@ -430,11 +470,17 @@ function VoidDialog({ doc, onClose }: { doc: SalesDoc; onClose: () => void }) {
   );
 }
 
+type SalesTab = 'new' | 'link';
+
 export function SalesPage() {
   const user = useCurrentUser();
   const navigate = useNavigate();
+  const location = useLocation();
+  const linkId = (location.state as { docId?: string } | null)?.docId;
+  const [tab, setTab] = useState<SalesTab>(linkId ? 'link' : 'new');
   const [key, setKey] = useState(0);
   const [last, setLast] = useState<SalesDoc | null>(null);
+  const [message, setMessage] = useState('');
   const today = new Date().toISOString().slice(0, 10);
   const todays = useLiveQuery(
     async () => (await db.docs.where('kind').equals('invoice').toArray()).filter((d) => d.isCashSale && d.status !== 'void' && d.createdAt.slice(0, 10) === today),
@@ -451,30 +497,172 @@ export function SalesPage() {
           </strong>
         </div>
       </div>
-      {last && (
-        <p className="notice">
-          Sale {last.number} saved: {formatNgwee(last.totalNgwee)} paid in cash.{' '}
-          {USE_HASH ? (
-            <Link to={`/print/${last.id}`}>Print receipt</Link>
-          ) : (
-            <a href={pageUrl(`/print/${last.id}`)} target="_blank" rel="noreferrer">
-              Print receipt
-            </a>
-          )}{' '}
-          · <Link to={`/invoices/${last.id}`}>Open</Link>
-        </p>
+      <div className="seg" role="tablist" aria-label="Sales">
+        <button role="tab" aria-selected={tab === 'new'} className={tab === 'new' ? 'seg-btn active' : 'seg-btn ghost'} onClick={() => setTab('new')}>
+          <Icon name="sales" size={18} /> New sale
+        </button>
+        <button role="tab" aria-selected={tab === 'link'} className={tab === 'link' ? 'seg-btn active' : 'seg-btn ghost'} onClick={() => setTab('link')}>
+          <Icon name="invoices" size={18} /> Pay a quotation or invoice
+        </button>
+      </div>
+      {message && <p className="notice">{message}</p>}
+      {tab === 'new' ? (
+        <>
+          {last && (
+            <p className="notice">
+              Sale {last.number} saved: {formatNgwee(last.totalNgwee)} paid in cash.{' '}
+              {USE_HASH ? (
+                <Link to={`/print/${last.id}`}>Print receipt</Link>
+              ) : (
+                <a href={pageUrl(`/print/${last.id}`)} target="_blank" rel="noreferrer">
+                  Print receipt
+                </a>
+              )}{' '}
+              · <Link to={`/invoices/${last.id}`}>Open</Link>
+            </p>
+          )}
+          <p className="muted small">
+            For a walk-in customer paying cash now. If the customer is paying by mobile money or bank, or already has a quotation, use{' '}
+            <button type="button" className="link-btn" onClick={() => setTab('link')}>
+              Pay a quotation or invoice
+            </button>
+            .
+          </p>
+          <DocEditor
+            key={key}
+            mode="sale"
+            submitLabel="Paid in cash: complete sale"
+            onSubmit={async (input) => {
+              const d = await createInvoice(user, input, { cashSale: true });
+              setLast(d);
+              setMessage('');
+              setKey((k) => k + 1);
+            }}
+            onCancel={() => navigate('/')}
+          />
+        </>
+      ) : (
+        <LinkDocPanel
+          initialId={linkId}
+          onPaid={(inv, msg) => {
+            setMessage(msg);
+            navigate(location.pathname, { replace: true, state: null });
+            void inv;
+          }}
+        />
       )}
-      <DocEditor
-        key={key}
-        mode="sale"
-        submitLabel="Paid in cash: complete sale"
-        onSubmit={async (input) => {
-          const d = await createInvoice(user, input, { cashSale: true });
-          setLast(d);
-          setKey((k) => k + 1);
-        }}
-        onCancel={() => navigate('/')}
-      />
     </>
+  );
+}
+
+/** Find an open quotation or an unpaid invoice, then take payment for it. */
+function LinkDocPanel({ initialId, onPaid }: { initialId?: string; onPaid: (inv: SalesDoc, message: string) => void }) {
+  const [search, setSearch] = useState('');
+  const [chosenId, setChosenId] = useState<string | undefined>(initialId);
+  const open = useLiveQuery(async () => {
+    const docs = await db.docs.toArray();
+    return docs
+      .filter((d) =>
+        d.kind === 'quote' ? ['draft', 'sent', 'accepted'].includes(d.status) : d.status !== 'void' && !d.isCashSale && openBalance(d) > 0,
+      )
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }, []);
+  const chosen = useLiveQuery(() => (chosenId ? db.docs.get(chosenId) : undefined), [chosenId]);
+
+  const matches = search.trim()
+    ? searchItems(
+        (open ?? []).map((d) => ({ d, name: d.customer.name, code: d.number })),
+        search,
+      ).map((x) => x.d)
+    : (open ?? []);
+
+  if (chosen)
+    return (
+      <div className="doc-grid">
+        <section className="card">
+          <div className="row-between">
+            <h2>
+              {chosen.kind === 'quote' ? 'Quotation' : 'Invoice'} {chosen.number}
+            </h2>
+            <button type="button" className="ghost small-btn" onClick={() => setChosenId(undefined)}>
+              Choose another
+            </button>
+          </div>
+          <p>
+            <strong>{chosen.customer.name}</strong>
+            {chosen.customer.phone && <span className="muted"> · {chosen.customer.phone}</span>}
+          </p>
+          <ul className="mini-lines">
+            {chosen.lines.map((l) => (
+              <li key={l.productId}>
+                <span>
+                  {l.quantity} {l.unit} {l.name}
+                </span>
+                <span>{formatNgwee(lineTotal(l))}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="totals">
+            <div className="grand">
+              <span>Total</span>
+              <strong>{formatNgwee(chosen.totalNgwee)}</strong>
+            </div>
+            {chosen.kind === 'invoice' && (
+              <div className="sub">
+                <span>Still to pay</span>
+                <strong className="warn-text">{formatNgwee(openBalance(chosen))}</strong>
+              </div>
+            )}
+          </div>
+          {chosen.kind === 'quote' && (
+            <p className="muted small">Taking payment turns this quotation into an invoice and takes the items out of stock.</p>
+          )}
+          {chosen.kind === 'quote' && isExpired(chosen) && <p className="warn-text small">This quotation has expired. Check the prices with the customer.</p>}
+        </section>
+        <section className="card">
+          <h2>How is the customer paying?</h2>
+          <TakePayment
+            key={chosen.id + chosen.updatedAt}
+            doc={chosen}
+            onCancel={() => setChosenId(undefined)}
+            onDone={(inv, msg) => {
+              setChosenId(undefined);
+              onPaid(inv, msg);
+            }}
+          />
+        </section>
+      </div>
+    );
+
+  return (
+    <section className="card">
+      <h2>Find the quotation or invoice</h2>
+      <input
+        className="wide-input"
+        placeholder="Number or customer name"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        aria-label="Find a quotation or invoice"
+        autoFocus
+      />
+      {open && open.length === 0 && <p className="muted">There are no open quotations or unpaid invoices.</p>}
+      <ul className="link-list">
+        {matches.slice(0, 30).map((d) => (
+          <li key={d.id}>
+            <button type="button" className="ghost" onClick={() => setChosenId(d.id)}>
+              <span>
+                <strong>{d.number}</strong> <span className={`chip ${d.kind === 'quote' ? 'chip-quote' : 'chip-invoice'}`}>{d.kind === 'quote' ? 'Quotation' : 'Invoice'}</span>
+                <span className="block">{d.customer.name}</span>
+              </span>
+              <span className="link-amount">
+                {formatNgwee(d.kind === 'quote' ? d.totalNgwee : openBalance(d))}
+                <span className="muted small block">{d.kind === 'quote' ? 'quoted' : 'still to pay'}</span>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      {search.trim() && matches.length === 0 && <p className="muted">Nothing open matches "{search}".</p>}
+    </section>
   );
 }

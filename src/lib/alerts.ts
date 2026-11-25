@@ -106,6 +106,26 @@ export function activityAlerts(entries: ActivityEntry[]): Alert[] {
           username: e.username,
         });
         break;
+      case 'Payment details changed':
+        alerts.push({
+          id: `paydetails:${e.id}`,
+          severity: 'high',
+          at: e.at,
+          title: `Mobile money or bank details changed by ${e.username}`,
+          details: `${e.details}. Make sure every number belongs to the company, or customers' money could go to someone else.`,
+          username: e.username,
+        });
+        break;
+      case 'Payment rejected':
+        alerts.push({
+          id: `payreject:${e.id}`,
+          severity: 'medium',
+          at: e.at,
+          title: `Payment rejected by ${e.username}`,
+          details: `${e.details}. A fake or reused proof of payment is a warning sign.`,
+          username: e.username,
+        });
+        break;
       case 'Quotation created':
       case 'Quotation edited':
       case 'Invoice issued':

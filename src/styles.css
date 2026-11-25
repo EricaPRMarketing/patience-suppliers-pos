@@ -558,3 +558,62 @@ td, th { overflow-wrap: anywhere; }
   .picker-list button { flex-direction: column; align-items: flex-start; gap: 0.15rem; }
   .picker-list button .nowrap { font-size: 0.88rem; }
 }
+
+/* ---------- Step 4: payments ---------- */
+.block { display: block; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9em; overflow-wrap: anywhere; }
+.big { font-size: 1.25rem; font-weight: 800; }
+button.small-btn { padding: 0.35rem 0.7rem; font-size: 0.85rem; }
+button.link-btn { all: unset; color: var(--green-dark); text-decoration: underline; cursor: pointer; font-weight: 600; }
+.warn-notice { background: var(--warn-bg); border-left-color: #e0a100; color: var(--warn-ink); }
+.wide-input { width: 100%; font-size: 1.05rem; }
+
+.seg { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.25rem 0 1rem; }
+.seg-btn { flex: 1 1 220px; padding: 0.8rem 1rem; }
+
+.link-list { list-style: none; margin: 0.75rem 0 0; padding: 0; display: grid; gap: 0.5rem; }
+.link-list button { width: 100%; justify-content: space-between; text-align: left; padding: 0.75rem 0.9rem; color: var(--charcoal); font-weight: 500; }
+.link-list .link-amount { text-align: right; font-weight: 800; color: var(--green-dark); white-space: nowrap; }
+.chip-quote { background: #e9f1fb; color: #24527a; }
+.chip-invoice { background: #eef5d6; color: #4b6316; }
+.mini-lines { list-style: none; margin: 0.5rem 0; padding: 0; display: grid; gap: 0.3rem; }
+.mini-lines li { display: flex; justify-content: space-between; gap: 1rem; border-bottom: 1px dashed var(--line); padding: 0.3rem 0; }
+
+.take-payment { display: grid; gap: 0.9rem; }
+.method-picker { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+.method-picker .method { flex-direction: column; gap: 0.3rem; padding: 0.8rem 0.4rem; font-size: 0.92rem; }
+.method-picker .method.ghost { color: var(--charcoal); }
+.method-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.3); font-weight: 800; font-size: 1.05rem; }
+.method.ghost .method-icon { background: var(--ok-bg); color: var(--green-dark); }
+.pay-to { border: 2px dashed var(--lime); border-radius: 14px; padding: 0.8rem 1rem; background: #fbfdf4; animation: pop-in 0.3s var(--ease); }
+.pay-to-title { margin: 0 0 0.5rem; font-weight: 700; }
+.pay-to dl, .review-facts { display: grid; grid-template-columns: max-content 1fr; gap: 0.3rem 1rem; margin: 0; }
+.pay-to dt, .review-facts dt { color: var(--grey); font-size: 0.85rem; }
+.pay-to dd, .review-facts dd { margin: 0; overflow-wrap: anywhere; }
+.pay-to dd.big { font-size: 1.35rem; letter-spacing: 0.02em; color: var(--green-dark); }
+
+.pay-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.pay-list li { display: flex; justify-content: space-between; gap: 1rem; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.pay-side { display: flex; gap: 0.5rem; align-items: center; }
+.chip.pay-confirmed { background: var(--ok-bg); color: var(--green-dark); }
+.chip.pay-pending { background: var(--warn-bg); color: var(--warn-ink); }
+.chip.pay-rejected { background: #fdf0ef; color: var(--error); }
+
+.review-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
+.review-item { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; border: 1px solid var(--line); border-left: 4px solid #e0a100; border-radius: 12px; padding: 0.9rem 1rem; }
+.review-facts { margin-top: 0.5rem; }
+.review-actions { display: flex; flex-direction: column; gap: 0.5rem; align-items: stretch; min-width: 200px; }
+.proof-img { display: block; max-width: 100%; max-height: 70vh; margin: 0 auto; border-radius: 8px; }
+.proof-pdf { width: 100%; height: 70vh; }
+
+.acc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.75rem; margin-bottom: 0.75rem; }
+fieldset.acc { border: 1px solid var(--line); border-radius: 12px; padding: 0.6rem 0.9rem 0.9rem; display: grid; gap: 0.5rem; min-width: 0; }
+fieldset.acc legend { font-weight: 700; padding: 0 0.3rem; }
+h3 { font-size: 1rem; margin: 1rem 0 0.5rem; }
+
+@media (max-width: 560px) {
+  .method-picker .method { font-size: 0.8rem; }
+  .review-actions { min-width: 0; width: 100%; }
+  .pay-to dl, .review-facts { grid-template-columns: 1fr; gap: 0.1rem; }
+  .pay-to dd, .review-facts dd { margin-bottom: 0.35rem; }
+}
