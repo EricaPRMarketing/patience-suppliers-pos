@@ -11,10 +11,10 @@ import { DashboardPage } from './pages/DashboardPage';
 import { UsersPage } from './pages/UsersPage';
 import { ActivityPage } from './pages/ActivityPage';
 import { AccountPage } from './pages/AccountPage';
+import { PaymentsPage } from './pages/payments/PaymentsPage';
 import { SecurityPage } from './pages/SecurityPage';
 import { DocList, DocViewPage, EditQuotePage, NewDocPage, SalesPage } from './pages/docs/DocPages';
 import { PrintPage } from './pages/docs/PrintPage';
-import { ComingSoonPage } from './pages/ComingSoonPage';
 import { InventoryPage } from './pages/inventory/InventoryPage';
 
 function Guard({ needs, children }: { needs?: Permission; children: ReactNode }) {
@@ -55,7 +55,7 @@ function AppRoutes() {
         <Route path="invoices/new" element={<Guard needs="invoices.create"><NewDocPage kind="invoice" /></Guard>} />
         <Route path="invoices/:id" element={<Guard needs="invoices.create"><DocViewPage /></Guard>} />
         <Route path="inventory" element={<Guard needs="inventory.view"><InventoryPage /></Guard>} />
-        <Route path="payments" element={<Guard needs="payments.confirm"><ComingSoonPage title="Payments" step="step 4" icon="payments" features={["Mobile money or bank with proof of payment upload", "Manager or owner confirms each payment", "Online payment gateway"]} /></Guard>} />
+        <Route path="payments" element={<Guard needs="payments.confirm"><PaymentsPage /></Guard>} />
         <Route path="users" element={<Guard needs="users.view"><UsersPage /></Guard>} />
         <Route path="activity" element={<ActivityPage />} />
         <Route path="security" element={<Guard needs="security.view"><SecurityPage /></Guard>} />

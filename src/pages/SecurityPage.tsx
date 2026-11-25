@@ -121,6 +121,8 @@ export function SecurityPage() {
           <li>{RULES.writeOffsPerDay} or more stock removals by one person in a day</li>
           <li>Stock uploads that lower quantities</li>
           <li>Voided invoices, especially ones that had already been paid</li>
+          <li>Any change to the company's mobile money numbers or bank accounts</li>
+          <li>Rejected mobile money or bank payments (fake or reused proof of payment)</li>
           <li>Discounts of {RULES.discountShare * 100}% or more on a quotation, invoice or sale</li>
           <li>Missing quotation or invoice numbers (deleted documents)</li>
           <li>Price cuts of {RULES.priceDropShare * 100}% or more, and prices lowered then put back within {RULES.priceRestoreHours} hours</li>
